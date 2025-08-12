@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Felicidades — Pixel Art</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #0b1020;
+      color: white;
+      font-family: 'Press Start 2P', monospace;
+      margin: 0;
+      overflow: hidden;
+    }
+    .container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .star {
+      color: gold;
+      animation: blink 1s infinite alternate;
+    }
+    @keyframes blink {
+      0% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+    canvas {
+      image-rendering: pixelated;
+      background: transparent;
+    }
+    #fireworks {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fireworks"></canvas>
+  <div class="container">
+    <h1>
+      <span class="star">★</span>
+      ¡Feliz cumpleaños, Chris!!!!
+      <span class="star">★</span>
+    </h1>
+    <canvas id="turtle" width="12" height="9" style="width:320px;height:320px;"></canvas>
+  </div>
+
+  <audio id="pop-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_8c8c349b4d.mp3?filename=pop-94319.mp3" preload="auto"></audio>
+
+  <script>
+    // Tortuga central
+    const pixelMap = [
+      [0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,1,1,0,0,0,0,0,0],
+      [0,0,0,1,1,1,1,0,2,2,0,0],
+      [0,0,1,1,1,1,1,1,2,3,2,0],
+      [0,0,1,1,1,1,1,1,2,2,2,0],
+      [0,2,1,1,1,1,1,1,2,2,0,0],
+      [0,0,2,2,2,2,2,2,0,0,0,0],
+      [0,0,2,2,0,0,2,2,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+    const palette = {
+      0: null,
+      1: '#2E7D32',
+      2: '#8BC34A',
+      3: '#000000'
+    };
+    const turtleCanvas = document.getElementById('turtle');
+    const tctx = turtleCanvas.getContext('2d');
+    for(let y=0;y<pixelMap.length;y++){
+      for(let x=0;x<pixelMap[y].length;x++){
+        const color = palette[pixelMap[y][x]];
+        if(color){
+          tctx.fillStyle = color;
+          tctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+
+    // Fuegos artificiales con tortugas aleatorias
+    const fwCanvas = document.getElementById('fireworks');
+    const ctx = fwCanvas.getContext('2d');
+    fwCanvas.width = window.innerWidth;
+    fwCanvas.height = window.innerHeight;
+
+    class Firework {
+      constructor() {
+        this.x = Math.random() * fwCanvas.width;
+        this.y = fwCanvas.height;
+        this.targetY = Math.random() * fwCanvas.height / 2;
+        this.color = `hsl(${Math.random()*360},100%,50%)`;
+        this.isTurtle = Math.random() < 0.4; // 40% tortuga
+        this.exploded = false;
+        this.particles = [];
+      }
+      update() {
+        if (!this.exploded) {
+          this.y -= 5;
+          if (this.y <= this.targetY) {
+            this.explode();
+          }
+        } else {
+          this.particles.forEach(p => p.update());
+          this.particles = this.particles.filter(p => p.life > 0);
+        }
+      }
+      explode() {
+        this.exploded = true;
+        document.getElementById('pop-sound').play();
+        if (this.isTurtle) {
+          this.particles.push(new TurtleParticle(this.x, this.y));
+        } else {
+          for (let i = 0; i < 50; i++) {
+            this.particles.push(new Particle(this.x, this.y, this.color));
+          }
+        }
+      }
+      draw() {
+        if (!this.exploded) {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          this.particles.forEach(p => p.draw());
+        }
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.5) * 6;
+        this.life = 50;
+        this.color = color;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+      }
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, 2, 2);
+      }
+    }
+
+    class TurtleParticle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.life = 60;
+        this.pixelMap = pixelMap;
+        this.colors = {
+          0: null,
+          1: `hsl(${Math.random()*360},100%,50%)`,
+          2: `hsl(${Math.random()*360},100%,60%)`,
+          3: '#000'
+        };
+        this.size = 3; // tamaño en px
+      }
+      update() {
+        this.life--;
+      }
+      draw() {
+        for(let py=0; py<this.pixelMap.length; py++){
+          for(let px=0; px<this.pixelMap[py].length; px++){
+            const color = this.colors[this.pixelMap[py][px]];
+            if(color){
+              ctx.fillStyle = color;
+              ctx.fillRect(this.x + px*this.size, this.y + py*this.size, this.size, this.size);
+            }
+          }
+        }
+      }
+    }
+
+    let fireworks = [];
+    function loop() {
+      ctx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+      if (Math.random() < 0.08) fireworks.push(new Firework());
+      fireworks.forEach(fw => {
+        fw.update();
+        fw.draw();
+      });
+      fireworks = fireworks.filter(fw => !fw.exploded || fw.particles.length > 0);
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
